@@ -1,7 +1,57 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
+// ------------------------------------------------------------------
+// cancel a request using context
+// ------------------------------------------------------------------
+// type Respose struct {
+// 	value int
+// 	err   error
+// }
+
+// func fetchUserData(ctx context.Context, userid int) (int, error) {
+// 	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+// 	defer cancel()
+// 	respch := make(chan Respose)
+// 	go func() {
+// 		val, err := fetchThirdPartyApi()
+// 		respch <- Respose{
+// 			value: val,
+// 			err:   err,
+// 		}
+// 	}()
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			return 0, fmt.Errorf("fetching data from third party took too long")
+// 		case res := <-respch:
+// 			return res.value, res.err
+// 		}
+// 	}
+// }
+
+// func fetchThirdPartyApi() (int, error) {
+// 	time.Sleep(time.Millisecond * 500)
+// 	return 666, nil
+// }
+
+// func main() {
+// 	start := time.Now()
+// 	ctx := context.Background()
+// 	userId := 10
+// 	val, err := fetchUserData(ctx, userId)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	fmt.Println(val)
+// 	fmt.Println(time.Since(start))
+// }
+
+// --------------------------------
 type Message struct {
 	From    string
 	Payload string
@@ -11,11 +61,15 @@ type server struct {
 	servChan chan Message
 }
 
-func (s *server) listenAndServe() {
-	for msg := range s.servChan {
-		fmt.Printf("from: %s, payload: %s\n", msg.From, msg.Payload)
+func (s *server) listenAndServe(ctx context.Context) {
+	for {
+		select {
+		case msg := <-s.servChan:
+			fmt.Println(msg)
+		case <-ctx.Done():
+			return
+		}
 	}
-
 }
 func sendMessageToTheServer(message string, s chan Message) {
 	m := Message{
@@ -27,14 +81,14 @@ func sendMessageToTheServer(message string, s chan Message) {
 }
 
 func main() {
+	ctx := context.Background()
 	serverChan := make(chan Message)
 	s := server{
 		servChan: serverChan,
 	}
-	go s.listenAndServe()
+	go s.listenAndServe(ctx)
 	sendMessageToTheServer("halemo is here", serverChan)
 
-	select {}
 }
 
 // func getUserData(userId int, resChan chan string, resWg *sync.WaitGroup) {
